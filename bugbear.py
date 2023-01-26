@@ -178,10 +178,11 @@ def _is_identifier(arg):
     # Return True if arg is a valid identifier, per
     # https://docs.python.org/2/reference/lexical_analysis.html#identifiers
 
-    if not isinstance(arg, ast.Str):
-        return False
-
-    return re.match(r"^[A-Za-z_][A-Za-z0-9_]*$", arg.s) is not None
+    return (
+        re.match(r"^[A-Za-z_][A-Za-z0-9_]*$", arg.s) is not None
+        if isinstance(arg, ast.Str)
+        else False
+    )
 
 
 def _to_name_str(node):
@@ -192,7 +193,7 @@ def _to_name_str(node):
     if isinstance(node, ast.Call):
         return _to_name_str(node.func)
     try:
-        return _to_name_str(node.value) + "." + node.attr
+        return f"{_to_name_str(node.value)}.{node.attr}"
     except AttributeError:
         return _to_name_str(node.value)
 
@@ -258,9 +259,9 @@ class BugBearVisitor(ast.NodeVisitor):
             )
         elif isinstance(node.type, ast.Tuple):
             names = [_to_name_str(e) for e in node.type.elts]
-            as_ = " as " + node.name if node.name is not None else ""
-            if len(names) == 0:
-                vs = ("`except (){}:`".format(as_),)
+            as_ = f" as {node.name}" if node.name is not None else ""
+            if not names:
+                vs = (f"`except (){as_}:`", )
                 self.errors.append(B001(node.lineno, node.col_offset, vars=vs))
             elif len(names) == 1:
                 self.errors.append(B013(node.lineno, node.col_offset, vars=names))
@@ -285,13 +286,16 @@ class BugBearVisitor(ast.NodeVisitor):
                         good = [g for g in good if g not in equivalents]
 
                 for name, other in itertools.permutations(tuple(good), 2):
-                    if _typesafe_issubclass(
-                        getattr(builtins, name, type), getattr(builtins, other, ())
+                    if (
+                        _typesafe_issubclass(
+                            getattr(builtins, name, type),
+                            getattr(builtins, other, ()),
+                        )
+                        and name in good
                     ):
-                        if name in good:
-                            good.remove(name)
+                        good.remove(name)
                 if good != names:
-                    desc = good[0] if len(good) == 1 else "({})".format(", ".join(good))
+                    desc = good[0] if len(good) == 1 else f'({", ".join(good)})'
                     self.errors.append(
                         B014(
                             node.lineno,
@@ -339,9 +343,12 @@ class BugBearVisitor(ast.NodeVisitor):
     def visit_Assign(self, node):
         if len(node.targets) == 1:
             t = node.targets[0]
-            if isinstance(t, ast.Attribute) and isinstance(t.value, ast.Name):
-                if (t.value.id, t.attr) == ("os", "environ"):
-                    self.errors.append(B003(node.lineno, node.col_offset))
+            if (
+                isinstance(t, ast.Attribute)
+                and isinstance(t.value, ast.Name)
+                and (t.value.id, t.attr) == ("os", "environ")
+            ):
+                self.errors.append(B003(node.lineno, node.col_offset))
         self.generic_visit(node)
 
     def visit_For(self, node):
@@ -592,36 +599,34 @@ class BugBearVisitor(ast.NodeVisitor):
             else:
                 expected_first_args = B902.cls
                 kind = "metaclass instance"
-        else:
-            if (
+        elif (
                 "classmethod" in decorators.names
                 or node.name in B902.implicit_classmethods
             ):
-                expected_first_args = B902.cls
-                kind = "class"
-            else:
-                expected_first_args = B902.self
-                kind = "instance"
+            expected_first_args = B902.cls
+            kind = "class"
+        else:
+            expected_first_args = B902.self
+            kind = "instance"
 
-        args = getattr(node.args, "posonlyargs", []) + node.args.args
         vararg = node.args.vararg
         kwarg = node.args.kwarg
         kwonlyargs = node.args.kwonlyargs
 
-        if args:
+        if args := getattr(node.args, "posonlyargs", []) + node.args.args:
             actual_first_arg = args[0].arg
             lineno = args[0].lineno
             col = args[0].col_offset
         elif vararg:
-            actual_first_arg = "*" + vararg.arg
+            actual_first_arg = f"*{vararg.arg}"
             lineno = vararg.lineno
             col = vararg.col_offset
         elif kwarg:
-            actual_first_arg = "**" + kwarg.arg
+            actual_first_arg = f"**{kwarg.arg}"
             lineno = kwarg.lineno
             col = kwarg.col_offset
         elif kwonlyargs:
-            actual_first_arg = "*, " + kwonlyargs[0].arg
+            actual_first_arg = f"*, {kwonlyargs[0].arg}"
             lineno = kwonlyargs[0].lineno
             col = kwonlyargs[0].col_offset
         else:

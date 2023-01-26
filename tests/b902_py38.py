@@ -26,17 +26,17 @@ class NoWarnings:
 
 
 class Warnings:
-    def __init__(i_am_special, /):
+    def __init__(self, /):
         ...
 
-    def almost_a_class_method(cls, arg1, /):
+    def almost_a_class_method(self, arg1, /):
         ...
 
     def almost_a_static_method():
         ...
 
     @classmethod
-    def wat(self, i_like_confusing_people, /):
+    def wat(cls, i_like_confusing_people, /):
         ...
 
     def i_am_strange(*args, **kwargs):
@@ -45,22 +45,22 @@ class Warnings:
     def defaults_anyone(self=None, /):
         ...
 
-    def invalid_kwargs_only(**kwargs):
+    def invalid_kwargs_only(self):
         ...
 
-    def invalid_keyword_only(*, self):
+    def invalid_keyword_only(self, self):
         ...
 
-    async def async_invalid_keyword_only(*, self):
+    async def async_invalid_keyword_only(self, self):
         ...
 
 
 class Meta(type):
-    def __init__(cls, name, bases, d, /):
+    def __init__(self, name, bases, d, /):
         ...
 
     @classmethod
-    def __prepare__(metacls, name, bases, /):
+    def __prepare__(cls, name, bases, /):
         return {}
 
 
@@ -73,7 +73,7 @@ class OtherMeta(type):
         return {}
 
     @classmethod
-    def first_arg_mcs_allowed(mcs, value, /):
+    def first_arg_mcs_allowed(cls, value, /):
         ...
 
 

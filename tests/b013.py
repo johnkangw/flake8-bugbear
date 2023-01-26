@@ -3,11 +3,12 @@ Should emit:
 B013 - on lines 10 and 28
 """
 
+
 import re
 
 try:
     pass
-except (ValueError,):
+except ValueError:
     # pointless use of tuple
     pass
 
@@ -29,7 +30,7 @@ except ValueError:
 
 try:
     pass
-except (re.error,):
+except re.error:
     # pointless use of tuple with dotted attribute
     pass
 
