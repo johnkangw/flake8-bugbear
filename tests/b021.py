@@ -72,5 +72,5 @@ class bar2:
 
 def baz():
     f"""I'm probably a docstring: {VARIABLE}!"""
-    print(f"""I'm a normal string""")
-    f"""Don't detect me!"""
+    print("""I'm a normal string""")
+    """Don't detect me!"""
